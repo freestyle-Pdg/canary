@@ -108,6 +108,7 @@ target_link_libraries(
            spdlog::spdlog
            unofficial::argon2::libargon2
            unofficial::libmariadb
+           nlohmann_json::nlohmann_json
            protobuf
 )
 

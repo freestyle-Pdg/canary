@@ -22,6 +22,7 @@
     "zlib",
     "bshoshany-thread-pool",
     "atomic-queue",
+    "nlohmann-json",
     {
       "name": "opentelemetry-cpp",
       "default-features": true,
