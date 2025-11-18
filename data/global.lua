@@ -172,6 +172,7 @@ FAMILIARSNAME = {
 	"knight familiar",
 	"druid familiar",
 	"paladin familiar",
+	"monk familiar",
 }
 
 function addStamina(playerId, ...)
