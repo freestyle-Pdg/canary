@@ -950,6 +950,11 @@ bool Monster::isFleeing() const {
 }
 
 bool Monster::selectTarget(const std::shared_ptr<Creature> &creature) {
+	if (OTSYS_TIME() < targetReactTime) {
+		// delay selecting targets while reaction time is active
+		return false;
+	}
+
 	if (!isTarget(creature)) {
 		return false;
 	}
@@ -966,8 +971,10 @@ bool Monster::selectTarget(const std::shared_ptr<Creature> &creature) {
 	}
 
 	if (isHostile() || isSummon()) {
-		if (setAttackedCreature(creature)) {
-			checkCreatureAttack();
+		if (getAttackedCreature() != creature && setAttackedCreature(creature)) {
+			targetReactTime = OTSYS_TIME() + EVENT_CREATURE_THINK_INTERVAL;
+			setFollowCreature(nullptr);
+			return true;
 		}
 	}
 	return setFollowCreature(creature);
@@ -1090,7 +1097,7 @@ void Monster::onThink(uint32_t interval) {
 }
 
 void Monster::onThink_async() {
-	if (isIdle) { // updateIdleStatus(); is executed before this method
+	if (isIdle || OTSYS_TIME() < targetReactTime) { // updateIdleStatus(); is executed before this method
 		return;
 	}
 
@@ -1134,6 +1141,10 @@ void Monster::onThink_async() {
 }
 
 void Monster::doAttacking(uint32_t interval) {
+	if (OTSYS_TIME() < targetReactTime) {
+		return;
+	}
+
 	const auto &attackedCreature = getAttackedCreature();
 	if (!attackedCreature || attackedCreature->isLifeless() || (isSummon() && attackedCreature.get() == this)) {
 		return;
