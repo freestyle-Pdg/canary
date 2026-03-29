@@ -43,11 +43,8 @@ function onTargetCreature(creature, target)
 	if player then
 		local vocationBaseId = player:getVocation():getBaseId()
 		if vocationBaseId ~= 0 then
-			local cond = CONDITION_BY_VOCATION_BASE_ID[vocationBaseId]
-			if cond then
-				target:addCondition(cond)
-				return true
-			end
+			target:addCondition(CONDITION_BY_VOCATION_BASE_ID[vocationBaseId])
+			return true
 		end
 	end
 	return false

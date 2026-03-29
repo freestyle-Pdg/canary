@@ -61,11 +61,14 @@ namespace {
 		ss.str("");
 		bool skillBoost = false;
 		if (it.abilities->speed) {
-			ss << std::showpos << "speed " << (it.abilities->speed >> 1) << std::noshowpos;
+			ss << std::showpos << "speed " << it.abilities->speed << std::noshowpos;
 			skillBoost = true;
 		}
 
 		for (uint8_t i = SKILL_FIRST; i <= SKILL_FISHING; i++) {
+			if (i == SKILL_MANA_LEECH_CHANCE || i == SKILL_LIFE_LEECH_CHANCE) {
+				continue;
+			}
 
 			if (!it.abilities->skills[i]) {
 				continue;
@@ -305,10 +308,9 @@ namespace {
 			itemDescription << "perfect shot " << std::showpos << itemType.abilities->perfectShotDamage << std::noshowpos << " at range " << unsigned(itemType.abilities->perfectShotRange);
 		}
 
-		int16_t reflectPhysical = itemType.abilities->reflectFlat[combatTypeToIndex(COMBAT_PHYSICALDAMAGE)];
-		if (reflectPhysical != 0) {
+		if (itemType.abilities->reflectFlat[0] != 0) {
 			appendAttributeSeparator(begin, itemDescription);
-			itemDescription << "damage reflection " << std::showpos << reflectPhysical << std::noshowpos;
+			itemDescription << "damage reflection " << std::showpos << itemType.abilities->reflectFlat[0] << std::noshowpos;
 		}
 	}
 
@@ -1071,16 +1073,6 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream &propStream) {
 			}
 
 			setAttribute(ItemAttribute_t::EXTRADEFENSE, extraDefense);
-			break;
-		}
-
-		case ATTR_MANTRA: {
-			int32_t mantra;
-			if (!propStream.read<int32_t>(mantra)) {
-				return ATTR_READ_ERROR;
-			}
-
-			setAttribute(ItemAttribute_t::MANTRA, mantra);
 			break;
 		}
 
@@ -2077,7 +2069,7 @@ Item::getDescriptions(const ItemType &it, const std::shared_ptr<Item> &item /*= 
 		}
 
 		if (it.elementalBond != COMBAT_NONE) {
-			[[maybe_unused]] auto &[desc_key, desc_val] = descriptions.emplace_back("Elemental Bond", toPascalCase(getCombatName(it.elementalBond)));
+			descriptions.push_back({ "Elemental Bond", toPascalCase(getCombatName(it.elementalBond)) });
 		}
 	} else {
 		if (!it.description.empty()) {
@@ -2267,11 +2259,11 @@ Item::getDescriptions(const ItemType &it, const std::shared_ptr<Item> &item /*= 
 		}
 
 		if (it.upgradeClassification > 0) {
-			[[maybe_unused]] auto &[desc1_key, desc1_val] = descriptions.emplace_back("Classification", std::to_string(it.upgradeClassification));
+			descriptions.emplace_back("Classification", std::to_string(it.upgradeClassification));
 		}
 
 		if (it.elementalBond != COMBAT_NONE) {
-			[[maybe_unused]] auto &[desc2_key, desc2_val] = descriptions.emplace_back("Elemental Bond", toPascalCase(getCombatName(it.elementalBond)));
+			descriptions.push_back({ "Elemental Bond", toPascalCase(getCombatName(it.elementalBond)) });
 		}
 	}
 	descriptions.shrink_to_fit();
@@ -2492,7 +2484,7 @@ std::string Item::parseShowAttributesDescription(const std::shared_ptr<Item> &it
 			}
 		}
 
-		const int32_t mantra = (item ? item->getMantra() : itemType.mantra);
+		const int32_t mantra = (item ? item->getMantra() : itemType.armor);
 		if (mantra != 0) {
 			if (begin) {
 				itemDescription << " (Mantra:" << mantra;

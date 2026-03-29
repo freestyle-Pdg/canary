@@ -9,13 +9,6 @@
 
 #pragma once
 
-#ifndef USE_PRECOMPILED_HEADERS
-	#include <array>
-	#include <cstdint>
-	#include <string>
-	#include <vector>
-#endif
-
 enum class WheelSlots_t : uint8_t {
 	SLOT_GREEN_200 = 1,
 	SLOT_GREEN_TOP_150 = 2,
@@ -97,7 +90,7 @@ enum class WheelStage_t : uint8_t {
 	SPIRITUAL_OUTBURST = 14,
 	ASCETIC = 15,
 
-	STAGE_COUNT // Always last
+	STAGE_COUNT = 16
 };
 
 enum class WheelOnThink_t : uint8_t {
@@ -132,7 +125,7 @@ enum class WheelStat_t : uint8_t {
 	DODGE = 14,
 	CRITICAL_DAMAGE = 15,
 
-	TOTAL_COUNT // Always last
+	TOTAL_COUNT = 16
 };
 
 enum class WheelMajor_t : uint8_t {
@@ -194,7 +187,7 @@ enum class WheelSpellBoost_t : uint8_t {
 	CRITICAL_DAMAGE = 11,
 	CRITICAL_CHANCE = 12,
 
-	TOTAL_COUNT // Always last
+	TOTAL_COUNT = 13
 };
 
 /**
@@ -226,8 +219,8 @@ struct PlayerWheelMethodsBonusData {
 		int damage = 0;
 		int healing = 0;
 	};
-	// value * 100. Example: 1% == 100; agora uint16_t (0..10000 para 0..100%)
-	std::array<uint16_t, 4> unlockedVesselResonances = {};
+	// value * 100. Example: 1% == 100
+	std::array<uint8_t, 4> unlockedVesselResonances = {};
 
 	// Raw value. Example: 1 == 1
 	struct Skills {
@@ -237,7 +230,7 @@ struct PlayerWheelMethodsBonusData {
 		int fist = 0;
 	};
 
-	// Raw percentage value. Example: 1% == 1.0
+	// value * 100. Example: 1% == 100
 	struct Leech {
 		double manaLeech = 0;
 		double lifeLeech = 0;

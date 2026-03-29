@@ -15,27 +15,25 @@ local function calculateSweepingDamage(player, skill, attack, basePower)
 	local levelBasedDmg = player:calculateFlatDamageHealing()
 
 	local skillBonus = 0
-	local delta = skill - 110
-	local deltaSq = delta * delta
 
 	if skill > 250 then
-		skillBonus = deltaSq * 0.043
+		skillBonus = ((skill - 110) ^ 2) * 0.043
 	elseif skill > 230 then
-		skillBonus = deltaSq * 0.039
+		skillBonus = ((skill - 110) ^ 2) * 0.039
 	elseif skill > 210 then
-		skillBonus = deltaSq * 0.037
+		skillBonus = ((skill - 110) ^ 2) * 0.037
 	elseif skill > 190 then
-		skillBonus = deltaSq * 0.035
+		skillBonus = ((skill - 110) ^ 2) * 0.035
 	elseif skill > 160 then
-		skillBonus = deltaSq * 0.033
+		skillBonus = ((skill - 110) ^ 2) * 0.033
 	elseif skill > 140 then
-		skillBonus = deltaSq * 0.029
+		skillBonus = ((skill - 110) ^ 2) * 0.029
 	elseif skill > 130 then
-		skillBonus = deltaSq * 0.026
+		skillBonus = ((skill - 110) ^ 2) * 0.026
 	elseif skill > 120 then
-		skillBonus = deltaSq * 0.024
+		skillBonus = ((skill - 110) ^ 2) * 0.024
 	elseif skill > 110 then
-		skillBonus = deltaSq * 0.022
+		skillBonus = ((skill - 110) ^ 2) * 0.022
 	end
 
 	local baseDamage = skill * attack * basePower / 1000 + levelBasedDmg + skillBonus
@@ -45,7 +43,7 @@ end
 
 -- Callbacks
 function onGetFormulaValuesInner(player, skill, attack, factor)
-	local min, max = calculateSweepingDamage(player, skill, attack, SPELL_BASE_POWER_CENTER)
+	local min, max = calculateSweepingDamage(player, skill, attack, SPELL_BASE_POWER_CENTER, "Center")
 	sweepingTakedownCache[player:getId()] = { min = min, max = max }
 	return min, max
 end
@@ -53,8 +51,7 @@ end
 function onGetFormulaValuesOuter(player, skill, attack, factor)
 	local cached = sweepingTakedownCache[player:getId()]
 	if not cached then
-		logger.debug(string.format("[Sweeping Takedown - Outer] Cache miss for player %s, returning 0 damage", player:getName()))
-		return 0, 0 -- safe fallback
+		return 0, 0 -- fallback seguro
 	end
 
 	local min = cached.min * 0.75
@@ -71,11 +68,8 @@ combatOuter:setCallback(CALLBACK_PARAM_SKILLVALUE, "onGetFormulaValuesOuter")
 local spell = Spell("instant")
 
 function spell.onCastSpell(creature, var)
-	local playerId = creature:getId()
 	combatInner:execute(creature, var)
 	combatOuter:execute(creature, var)
-	-- Clean up cache to prevent memory leak
-	sweepingTakedownCache[playerId] = nil
 	return true
 end
 

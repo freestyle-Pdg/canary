@@ -30,6 +30,7 @@ private:
 	static void initConditionParamEnums(lua_State* L);
 	static void initAttributeConditionSubIdEnums(lua_State* L);
 	static void initConcoctionsEnum(lua_State* L);
+	static void initEffectOriginEnums(lua_State* L);
 	static void initConstMeEnums(lua_State* L);
 	static void initConstAniEnums(lua_State* L);
 	static void initConstPropEnums(lua_State* L);
@@ -54,6 +55,7 @@ private:
 	static void initTextColorEnums(lua_State* L);
 	static void initTileStateEnums(lua_State* L);
 	static void initSpeechBubbleEnums(lua_State* L);
+	static void initKeywordButtonIcons(lua_State* L);
 	static void initMapMarkEnums(lua_State* L);
 	static void initReturnValueEnums(lua_State* L);
 	static void initReloadTypeEnums(lua_State* L);

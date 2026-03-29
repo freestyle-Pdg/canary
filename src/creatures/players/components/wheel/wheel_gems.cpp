@@ -621,20 +621,18 @@ void WheelModifierContext::addStrategies(WheelGemSupremeModifier_t modifier, uin
 			break;
 
 		/**
-		 * @brief Increases damage of Flurry of Blows using grade multiplier.
-		 * (bonus.increase.damage = 6.5 * gradeMultiplier)
+		 * @brief Increases critical damage of Flurry of Blows using grade multiplier.
 		 */
 		case WheelGemSupremeModifier_t::Monk_FlurryOfBlows_DamageIncrease:
-			bonus.increase.damage = 6.5 * gradeMultiplier;
+			bonus.increase.criticalDamage = 6.5 * gradeMultiplier;
 			m_strategies.emplace_back(std::make_unique<GemModifierSpellBonusStrategy>(m_wheel, "Flurry of Blows", bonus));
 			break;
 
 		/**
-		 * @brief Increases critical damage of Flurry of Blows using grade multiplier.
-		 * (bonus.increase.criticalDamage = 8 * gradeMultiplier)
+		 * @brief Increases damage of Flurry of Blows using grade multiplier.
 		 */
 		case WheelGemSupremeModifier_t::Monk_FlurryOfBlows_CriticalExtraDamage:
-			bonus.increase.criticalDamage = 8 * gradeMultiplier;
+			bonus.increase.damage = 8 * gradeMultiplier;
 			m_strategies.emplace_back(std::make_unique<GemModifierSpellBonusStrategy>(m_wheel, "Flurry of Blows", bonus));
 			break;
 

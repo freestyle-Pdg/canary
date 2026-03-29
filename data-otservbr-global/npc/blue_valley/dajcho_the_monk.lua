@@ -87,8 +87,7 @@ local function greetCallback(npc, creature)
 	local playerId = player:getId()
 	local isMonk = player:getVocation():getBaseId() == VOCATION.BASE_ID.MONK
 
-	local title = isMonk and "fellow monk" or "traveller"
-	local message = string.format("Welcome, %s. Into this valley's blue, warm bosom you are invited. Stay with us, listen and learn.", title)
+	local message = string.format("Welcome, %s. Into this valley's blue, warm bosom you are invited. Stay with us, listen and learn.", isMonk and "fellow monk")
 
 	npcHandler:setMessage(MESSAGE_GREET, message)
 	return true

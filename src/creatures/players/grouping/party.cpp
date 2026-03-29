@@ -218,10 +218,12 @@ bool Party::leaveParty(const std::shared_ptr<Player> &player, bool forceRemove /
 	broadcastPartyMessage(MESSAGE_PARTY_MANAGEMENT, ss.str());
 
 	const auto &mantraHolder = m_mantraHolder.lock();
-	player->resetBuff(BUFF_MANTRA);
-	player->sendSkills();
 	if (mantraHolder == player) {
 		updateMantraHolder();
+		m_mantraHolder.reset();
+	} else {
+		player->resetBuff(BUFF_MANTRA);
+		player->sendSkills();
 	}
 
 	if (missingLeader || empty()) {
@@ -294,7 +296,7 @@ void Party::applyGuidingPresence(const std::vector<std::shared_ptr<Player>> &mem
 		member->resetBuff(BUFF_MANTRA);
 
 		if (sharedMantra > 0) {
-			member->setBuff(BUFF_MANTRA, 100 + sharedMantra);
+			member->setBuff(BUFF_MANTRA, sharedMantra);
 		}
 
 		const int32_t current = member->getBuff(BUFF_MANTRA);
@@ -305,21 +307,24 @@ void Party::applyGuidingPresence(const std::vector<std::shared_ptr<Player>> &mem
 }
 
 void Party::updateMantraHolder() {
-	auto players = getPlayers();
-	m_mantraHolder.reset();
+	const auto &mantraHolder = m_mantraHolder.lock();
 
+	auto players = getPlayers();
 	for (const auto &member : players) {
 		if (!member) {
 			continue;
 		}
 		bool playerHasGuidincePresence = member->getPlayerVocationEnum() == VOCATION_MONK_CIP && member->wheel().getInstant(WheelInstant_t::GUIDING_PRESENCE);
-		if (!playerHasGuidincePresence) {
-			continue;
+		if (mantraHolder && playerHasGuidincePresence) {
+			m_mantraHolder = member->getMantra() > mantraHolder->getMantra() ? member : mantraHolder;
 		}
-
-		const auto currentHolder = m_mantraHolder.lock();
-		if (!currentHolder || member->getMantra() > currentHolder->getMantra()) {
+		// If there's no current holder, assign this qualifying member
+		else if (!mantraHolder && playerHasGuidincePresence) {
 			m_mantraHolder = member;
+		}
+		// If the current holder no longer qualifies, clear the holder
+		else if (mantraHolder == member && !playerHasGuidincePresence) {
+			m_mantraHolder.reset();
 		}
 	}
 
@@ -883,22 +888,17 @@ void Party::addPlayerLoot(const std::shared_ptr<Player> &player, const std::shar
 	}
 
 	uint32_t count = std::max<uint32_t>(1, item->getItemCount());
-	const AnalyzerItemKey key(item->getID(), item->getTier());
-	const auto [lootIt, lootInserted] = playerAnalyzer->lootMap.emplace(key, count);
-	if (!lootInserted) {
-		lootIt->second += count;
+	if (auto it = playerAnalyzer->lootMap.find(item->getID()); it != playerAnalyzer->lootMap.end()) {
+		it->second += count;
+	} else {
+		playerAnalyzer->lootMap.insert({ item->getID(), count });
 	}
 
 	if (priceType == LEADER_PRICE) {
 		playerAnalyzer->lootPrice += leader->getItemCustomPrice(item->getID()) * count;
 	} else {
-		uint64_t averagePrice = g_game().getItemMarketAveragePrice(item->getID(), item->getTier());
-		if (averagePrice > 0) {
-			playerAnalyzer->lootPrice += averagePrice * count;
-		} else {
-			const std::map<uint16_t, uint64_t> itemMap { { item->getID(), count } };
-			playerAnalyzer->lootPrice += g_game().getItemMarketPrice(itemMap, false);
-		}
+		const std::map<uint16_t, uint64_t> itemMap { { item->getID(), count } };
+		playerAnalyzer->lootPrice += g_game().getItemMarketPrice(itemMap, false);
 	}
 	updateTrackerAnalyzer();
 }
@@ -915,22 +915,17 @@ void Party::addPlayerSupply(const std::shared_ptr<Player> &player, const std::sh
 		membersData.emplace_back(playerAnalyzer);
 	}
 
-	const AnalyzerItemKey key(item->getID(), item->getTier());
-	const auto [supplyIt, supplyInserted] = playerAnalyzer->supplyMap.emplace(key, 1);
-	if (!supplyInserted) {
-		supplyIt->second += 1;
+	if (auto it = playerAnalyzer->supplyMap.find(item->getID()); it != playerAnalyzer->supplyMap.end()) {
+		it->second += 1;
+	} else {
+		playerAnalyzer->supplyMap.insert({ item->getID(), 1 });
 	}
 
 	if (priceType == LEADER_PRICE) {
 		playerAnalyzer->supplyPrice += leader->getItemCustomPrice(item->getID(), true);
 	} else {
-		uint64_t averagePrice = g_game().getItemMarketAveragePrice(item->getID(), item->getTier());
-		if (averagePrice > 0) {
-			playerAnalyzer->supplyPrice += averagePrice;
-		} else {
-			const std::map<uint16_t, uint64_t> itemMap { { item->getID(), 1 } };
-			playerAnalyzer->supplyPrice += g_game().getItemMarketPrice(itemMap, true);
-		}
+		const std::map<uint16_t, uint64_t> itemMap { { item->getID(), 1 } };
+		playerAnalyzer->supplyPrice += g_game().getItemMarketPrice(itemMap, true);
 	}
 	updateTrackerAnalyzer();
 }
@@ -980,36 +975,21 @@ void Party::reloadPrices() const {
 		return;
 	}
 
-	const auto sumMarketPrice = [](const std::map<AnalyzerItemKey, uint64_t> &itemMap, bool buyPrice) {
-		uint64_t total = 0;
-		for (const auto &[key, amount] : itemMap) {
-			auto averagePrice = g_game().getItemMarketAveragePrice(key.itemId, key.tier);
-			if (averagePrice > 0) {
-				total += averagePrice * amount;
-				continue;
-			}
-
-			const std::map<uint16_t, uint64_t> singleItemMap { { key.itemId, amount } };
-			total += g_game().getItemMarketPrice(singleItemMap, buyPrice);
-		}
-		return total;
-	};
-
-	const auto sumLeaderPrice = [&leader](const std::map<AnalyzerItemKey, uint64_t> &itemMap, bool supplyPrice) {
-		uint64_t total = 0;
-		for (const auto &[key, amount] : itemMap) {
-			total += leader->getItemCustomPrice(key.itemId, supplyPrice) * amount;
-		}
-		return total;
-	};
-
 	for (const auto &analyzer : membersData) {
 		if (priceType == MARKET_PRICE) {
-			analyzer->lootPrice = sumMarketPrice(analyzer->lootMap, false);
-			analyzer->supplyPrice = sumMarketPrice(analyzer->supplyMap, true);
-		} else {
-			analyzer->lootPrice = sumLeaderPrice(analyzer->lootMap, false);
-			analyzer->supplyPrice = sumLeaderPrice(analyzer->supplyMap, true);
+			analyzer->lootPrice = g_game().getItemMarketPrice(analyzer->lootMap, false);
+			analyzer->supplyPrice = g_game().getItemMarketPrice(analyzer->supplyMap, true);
+			continue;
+		}
+
+		analyzer->lootPrice = 0;
+		for (const auto &[itemId, price] : analyzer->lootMap) {
+			analyzer->lootPrice += leader->getItemCustomPrice(itemId) * price;
+		}
+
+		analyzer->supplyPrice = 0;
+		for (const auto &[itemId, price] : analyzer->supplyMap) {
+			analyzer->supplyPrice += leader->getItemCustomPrice(itemId, true) * price;
 		}
 	}
 }

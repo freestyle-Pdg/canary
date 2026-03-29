@@ -313,34 +313,17 @@ void NetworkMessage::append(const NetworkMessage &other) {
 }
 
 bool NetworkMessage::writeCount(uint32_t count) {
-	size_t requiredBytes = 0;
 	if (count < 0x40) {
 		// 6 bits (single byte)
-		requiredBytes = 1;
-	} else if (count < 0x4000) {
-		// 14 bits (two bytes)
-		requiredBytes = 2;
-	} else if (count < 0x40000000) {
-		// 30 bits (four bytes)
-		requiredBytes = 4;
-	} else {
-		g_logger().error("[writeCount] count={} is too large to encode.", count);
-		return false;
-	}
-
-	if (!canAdd(requiredBytes)) {
-		g_logger().error("[writeCount] not enough buffer space for {} bytes (count={}).", requiredBytes, count);
-		return false;
-	}
-
-	if (count < 0x40) {
 		addByte(count);
 	} else if (count < 0x4000) {
+		// 14 bits (two bytes)
 		uint8_t firstByte = (count >> 8) | 0x40;
 		uint8_t secondByte = count & 0xFF;
 		addByte(firstByte);
 		addByte(secondByte);
-	} else {
+	} else if (count < 0x40000000) {
+		// 30 bits (four bytes)
 		uint8_t b1 = (count >> 24) | 0x80;
 		uint8_t b2 = (count >> 16) & 0xFF;
 		uint8_t b3 = (count >> 8) & 0xFF;
@@ -349,6 +332,9 @@ bool NetworkMessage::writeCount(uint32_t count) {
 		addByte(b2);
 		addByte(b3);
 		addByte(b4);
+	} else {
+		g_logger().error("[writeCount] count={} is too large to encode.", count);
+		return false;
 	}
 
 	return true;

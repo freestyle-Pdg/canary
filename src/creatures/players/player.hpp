@@ -108,7 +108,6 @@ struct OpenContainer {
 using MuteCountMap = std::map<uint32_t, uint32_t>;
 
 static constexpr uint16_t PLAYER_MAX_SPEED = std::numeric_limits<uint16_t>::max();
-static constexpr uint16_t PLAYER_MAX_STAFF_SPEED = 1500;
 static constexpr uint16_t PLAYER_MIN_SPEED = 10;
 static constexpr uint8_t PLAYER_SOUND_HEALTH_CHANGE = 10;
 
@@ -155,21 +154,6 @@ public:
 	std::shared_ptr<const Player> getPlayer() const override {
 		return static_self_cast<Player>();
 	}
-
-	struct ExivaRestrictions {
-		bool allowAll = false;
-		bool allowOwnGuild = true;
-		bool allowOwnParty = true;
-		bool allowVipList = true;
-		bool allowPlayerWhitelist = true;
-		bool allowGuildWhitelist = true;
-
-		std::vector<uint32_t> playerWhitelist;
-		std::vector<uint32_t> guildWhitelist;
-	};
-
-	ExivaRestrictions &getExivaRestrictions();
-	const ExivaRestrictions &getExivaRestrictions() const;
 
 	/**
 	 * @brief Gets the current virtue of the player.
@@ -282,7 +266,7 @@ public:
 
 	void sendFYIBox(const std::string &message) const;
 
-	void parseBestiarySendRaces() const;
+	void sendBestiaryRaces() const;
 	void sendBestiaryCharms() const;
 	void addBestiaryKillCount(uint16_t raceid, uint32_t amount);
 	uint32_t getBestiaryKillCount(uint16_t raceid) const;
@@ -407,15 +391,6 @@ public:
 	void clearPartyInvitations();
 
 	void sendUnjustifiedPoints() const;
-	void sendOpenPvpSituations();
-	void refreshSkullTicksFromLastKill();
-	void updateLastKillTimeCache(time_t killTime);
-	struct SkullTimeInfo {
-		int64_t remainingSeconds { 0 };
-		uint8_t remainingDays { 0 };
-	};
-
-	SkullTimeInfo computeSkullTimeFromLastKill() const;
 
 	GuildEmblems_t getGuildEmblem(const std::shared_ptr<Player> &player) const;
 
@@ -527,8 +502,8 @@ public:
 	void setLevel(uint32_t newLevel) {
 		level = newLevel;
 	}
-	uint8_t getLevelPercent() const {
-		return levelPercent;
+	uint16_t getLevelProgress() const {
+		return levelProgress;
 	}
 	uint32_t getMagicLevel() const;
 	uint32_t getLoyaltyMagicLevel() const;
@@ -891,12 +866,9 @@ public:
 
 	size_t getMaxDepotItems() const;
 
-	bool canExiva(const std::string &spellParam) const;
+	// send methods
 
 	// tile
-	// send methods
-	// tile
-	// send methods
 	void sendAddTileItem(const std::shared_ptr<Tile> &itemTile, const Position &pos, const std::shared_ptr<Item> &item);
 	void sendUpdateTileItem(const std::shared_ptr<Tile> &updateTile, const Position &pos, const std::shared_ptr<Item> &item);
 	void sendRemoveTileThing(const Position &pos, int32_t stackpos) const;
@@ -922,22 +894,22 @@ public:
 	void sendCreatureType(const std::shared_ptr<Creature> &creature, uint8_t creatureType) const;
 	void sendSpellCooldown(uint16_t spellId, uint32_t time) const;
 	void sendSpellGroupCooldown(SpellGroup_t groupId, uint32_t time) const;
+	void sendPassiveCooldown(uint8_t passiveId, uint32_t currentCooldown, uint32_t maxCooldown, bool paused) const;
 	void sendUseItemCooldown(uint32_t time) const;
 	void reloadCreature(const std::shared_ptr<Creature> &creature) const;
 	void sendModalWindow(const ModalWindow &modalWindow);
 
 	// container
 	void closeAllExternalContainers();
+
 	// container
 	void sendAddContainerItem(const std::shared_ptr<Container> &container, std::shared_ptr<Item> item);
 	void sendUpdateContainerItem(const std::shared_ptr<Container> &container, uint16_t slot, const std::shared_ptr<Item> &newItem);
 	void sendRemoveContainerItem(const std::shared_ptr<Container> &container, uint16_t slot);
 	void sendContainer(uint8_t cid, const std::shared_ptr<Container> &container, bool hasParent, uint16_t firstIndex) const;
 
-	void sendExivaRestrictions();
-
 	// Monk Update
-	void sendMonkData(MonkData_t type, uint8_t value);
+	void sendMonkState(MonkData_t type, uint8_t value);
 	void updateAimAtTargetSpells(uint16_t spellId, uint8_t state);
 	std::unordered_set<uint16_t> getAimAtTargetSpells() const;
 
@@ -957,10 +929,6 @@ public:
 	void sendSingleSoundEffect(const Position &pos, SoundEffect_t id, SourceEffect_t source) const;
 
 	void sendDoubleSoundEffect(const Position &pos, SoundEffect_t mainSoundId, SourceEffect_t mainSource, SoundEffect_t secondarySoundId, SourceEffect_t secondarySource) const;
-
-	void sendAmbientSoundEffect(const SoundAmbientEffect_t id) const;
-
-	void sendMusicSoundEffect(const SoundMusicEffect_t id) const;
 
 	SoundEffect_t getAttackSoundEffect() const;
 	SoundEffect_t getHitSoundEffect() const;
@@ -1009,7 +977,7 @@ public:
 	void sendPartyCreatureShowStatus(const std::shared_ptr<Creature> &creature, bool showStatus) const;
 	void sendPartyPlayerVocation(const std::shared_ptr<Player> &player) const;
 	void sendPlayerVocation(const std::shared_ptr<Player> &player) const;
-	void sendDistanceShoot(const Position &from, const Position &to, uint16_t type) const;
+	void sendDistanceShoot(const Position &from, const Position &to, uint16_t type, uint8_t effectSource = ME_SOURCE_DEFAULT) const;
 	void sendHouseWindow(const std::shared_ptr<House> &house, uint32_t listId) const;
 	void sendCreatePrivateChannel(uint16_t channelId, const std::string &channelName) const;
 	void sendClosePrivate(uint16_t channelId);
@@ -1019,7 +987,7 @@ public:
 	void removeBakragoreIcon(const IconBakragore icon);
 	void sendClientCheck() const;
 	void sendGameNews() const;
-	void sendMagicEffect(const Position &pos, uint16_t type) const;
+	void sendMagicEffect(const Position &pos, uint16_t type, uint8_t effectSource = ME_SOURCE_DEFAULT) const;
 	void removeMagicEffect(const Position &pos, uint16_t type) const;
 	void sendPing();
 	void sendPingBack() const;
@@ -1099,7 +1067,14 @@ public:
 
 	void sendOpenStash(bool isNpc = false) const;
 
-	void sendTakeScreenshot(Screenshot_t screenshotType) const;
+	void sendClientEvent(ClientEvent_t EventType) const;
+	void sendUnlockedAchievement(const std::string& achievement) const;
+	void sendUnlockedTitle(const std::string& title) const;
+	void sendUnlockedSkin(const std::string& skinName, uint16_t lookType, uint8_t skinType) const;
+	void sendSkillAdvance(skills_t skill, uint16_t newLevel) const;
+	void sendProgressRace(uint16_t raceId, uint8_t progressLevel, bool isBoss = false) const;
+	void sendProgressQuest(const std::string& questName, bool isCompleted = false) const;
+	void sendProficiencyProgress(uint16_t itemId, const std::string& message) const;
 
 	void onThink(uint32_t interval) override;
 
@@ -1193,7 +1168,7 @@ public:
 
 	bool updateKillTracker(const std::shared_ptr<Container> &corpse, const std::string &playerName, const Outfit_t &creatureOutfit) const;
 
-	void updatePartyTrackerAnalyzer(bool force = false) const;
+	void updatePartyTrackerAnalyzer() const;
 
 	void sendLootStats(const std::shared_ptr<Item> &item, uint8_t count);
 	void updateSupplyTracker(const std::shared_ptr<Item> &item);
@@ -1374,6 +1349,8 @@ public:
 
 	void sendInventoryImbuements(const std::map<Slots_t, std::shared_ptr<Item>> &items) const;
 
+	void sendNpcChatWindow() const;
+
 	/*******************************************************************************
 	 * Hazard system
 	 ******************************************************************************/
@@ -1497,9 +1474,8 @@ public:
 
 	void sendSpellCooldowns();
 
-	void updateFood(uint16_t itemId, uint32_t timeLeft);
-	const std::map<uint16_t, uint32_t> &getActiveFoods() const;
-	bool isFoodActive(uint16_t itemId) const;
+	void addNpcFocus(const uint32_t npcId, const uint16_t buttonFlags);
+	void removeNpcFocus(const uint32_t npcId);
 
 private:
 	friend class PlayerLock;
@@ -1521,6 +1497,11 @@ private:
 	void removeExperience(uint64_t exp, bool sendText = false);
 
 	void updateInventoryWeight();
+	/**
+	 * @brief Starts checking the imbuements in the item so that the time decay is performed
+	 * Registers the player in an unordered_map in game.h so that the function can be initialized by the task
+	 */
+	void updateInventoryImbuement();
 	void updateSerenityState();
 
 	void setNextWalkActionTask(const std::shared_ptr<Task> &task);
@@ -1591,8 +1572,6 @@ private:
 	std::map<uint8_t, int64_t> moduleDelayMap;
 	std::map<uint16_t, uint64_t> itemPriceMap;
 
-	std::map<uint16_t, uint32_t> m_activeFoods;
-
 	std::map<uint64_t, std::shared_ptr<Reward>> rewardMap;
 
 	ManagedContainerMap m_managedContainers;
@@ -1604,6 +1583,8 @@ private:
 
 	std::vector<std::unique_ptr<PreySlot>> preys;
 	std::vector<std::unique_ptr<TaskHuntingSlot>> taskHunting;
+
+	std::map<uint32_t, uint16_t> focusedNpcs;
 
 	GuildWarVector guildWarVector;
 
@@ -1649,8 +1630,6 @@ private:
 	uint64_t forgeDustLevel = 0;
 	int64_t lastFailedFollow = 0;
 	int64_t skullTicks = 0;
-	mutable int64_t m_lastKillTimeCache = 0;
-	mutable bool m_lastKillTimeCached = false;
 	int64_t lastWalkthroughAttempt = 0;
 	int64_t lastToggleMount = 0;
 	int64_t lastUIInteraction = 0;
@@ -1757,7 +1736,7 @@ private:
 	std::pair<ConditionType_t, uint64_t> m_fearCondition = { CONDITION_NONE, 0 };
 
 	uint8_t soul = 0;
-	uint8_t levelPercent = 0;
+	uint8_t levelProgress = 0;
 	uint16_t loyaltyBonusPercent = 0;
 	double_t magLevelPercent = 0;
 
@@ -1769,8 +1748,6 @@ private:
 	Faction_t faction = FACTION_PLAYER;
 	QuickLootFilter_t quickLootFilter {};
 	PlayerPronoun_t pronoun = PLAYERPRONOUN_THEY;
-
-	ExivaRestrictions exivaRestrictions;
 
 	bool chaseMode = false;
 	bool secureMode = true;
@@ -1816,8 +1793,7 @@ private:
 
 	void updateItemsLight(bool internal = false);
 	uint16_t getStepSpeed() const override {
-		const uint16_t maxStepSpeed = hasFlag(PlayerFlags_t::SetMaxSpeed) ? PLAYER_MAX_STAFF_SPEED : PLAYER_MAX_SPEED;
-		return std::max<uint16_t>(PLAYER_MIN_SPEED, std::min<uint16_t>(maxStepSpeed, getSpeed()));
+		return std::max<uint16_t>(PLAYER_MIN_SPEED, std::min<uint16_t>(PLAYER_MAX_SPEED, getSpeed()));
 	}
 	void updateBaseSpeed();
 
@@ -1825,7 +1801,7 @@ private:
 
 	uint32_t getAttackSpeed() const;
 
-	static double_t getPercentLevel(uint64_t count, uint64_t nextLevelCount);
+	static uint16_t calculateLevelProgress(uint64_t count, uint64_t nextLevelCount);
 	double getLostPercent() const;
 	uint64_t getLostExperience() const override {
 		return skillLoss ? static_cast<uint64_t>(experience * getLostPercent()) : 0;

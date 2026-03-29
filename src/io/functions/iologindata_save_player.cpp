@@ -168,8 +168,6 @@ bool IOLoginDataSave::savePlayerFirst(const std::shared_ptr<Player> &player) {
 
 	savePlayerSystems(player);
 
-	savePlayerExivaRestrictions(player);
-
 	Database &db = Database::getInstance();
 
 	std::ostringstream query;
@@ -633,9 +631,9 @@ bool IOLoginDataSave::savePlayerPreyClass(const std::shared_ptr<Player> &player)
 					  << slot->freeRerollTimeStamp << ", ";
 
 				PropWriteStream propPreyStream;
-				[[maybe_unused]] auto lambda = std::ranges::for_each(slot->raceIdList, [&propPreyStream](uint16_t raceId) {
+				for (uint16_t raceId : slot->raceIdList) {
 					propPreyStream.write<uint16_t>(raceId);
-				});
+				}
 
 				size_t preySize;
 				const char* preyList = propPreyStream.getStream(preySize);
@@ -686,9 +684,9 @@ bool IOLoginDataSave::savePlayerTaskHuntingClass(const std::shared_ptr<Player> &
 				query << slot->freeRerollTimeStamp << ", ";
 
 				PropWriteStream propTaskHuntingStream;
-				[[maybe_unused]] auto lambda = std::ranges::for_each(slot->raceIdList, [&propTaskHuntingStream](uint16_t raceId) {
+				for (uint16_t raceId : slot->raceIdList) {
 					propTaskHuntingStream.write<uint16_t>(raceId);
-				});
+				}
 
 				size_t taskHuntingSize;
 				const char* taskHuntingList = propTaskHuntingStream.getStream(taskHuntingSize);
@@ -806,35 +804,4 @@ void IOLoginDataSave::savePlayerSystems(const std::shared_ptr<Player> &player) {
 	if (harmony > 0) {
 		player->kv()->scoped("spells")->set("harmony", harmony);
 	}
-}
-
-void IOLoginDataSave::savePlayerExivaRestrictions(const std::shared_ptr<Player> &player) {
-	if (!player) {
-		return;
-	}
-
-	const auto &restrictions = player->getExivaRestrictions();
-
-	const auto &scope = player->kv()->scoped("exiva-restrictions");
-
-	scope->set("allowAll", restrictions.allowAll);
-	scope->set("allowOwnGuild", restrictions.allowOwnGuild);
-	scope->set("allowOwnParty", restrictions.allowOwnParty);
-	scope->set("allowVipList", restrictions.allowVipList);
-	scope->set("allowPlayerWhitelist", restrictions.allowPlayerWhitelist);
-	scope->set("allowGuildWhitelist", restrictions.allowGuildWhitelist);
-
-	ArrayType playerArrayWrapper;
-	for (const auto &playerGuid : restrictions.playerWhitelist) {
-		playerArrayWrapper.push_back(ValueWrapper(static_cast<int>(playerGuid)));
-	}
-
-	scope->set("playerWhitelist", ValueWrapper(playerArrayWrapper));
-
-	ArrayType guildArrayWrapper;
-	for (const auto &guildId : restrictions.guildWhitelist) {
-		guildArrayWrapper.push_back(ValueWrapper(static_cast<int>(guildId)));
-	}
-
-	scope->set("guildWhitelist", ValueWrapper(guildArrayWrapper));
 }
